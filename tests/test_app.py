@@ -3,6 +3,7 @@
 import json
 
 from app import app
+from scrum_capacity_calculator.core.config_csv import ConfigCsvParser, serialize_config_csv
 
 
 def sample_config():
@@ -69,3 +70,27 @@ def test_zero_capacity_and_planned_work_is_overload_without_invalid_json():
     assert alice["capacity_hours"] == 0
     assert alice["load_rate"] is None
     assert alice["status"] == "overload"
+
+
+def test_configuration_csv_import_endpoint_validates_and_returns_setup():
+    response = app.test_client().post("/config/from-csv", data={
+        "config_csv": serialize_config_csv(sample_config()),
+    })
+
+    assert response.status_code == 200
+    imported = response.get_json()["config"]
+    assert imported["sprint"]["sprint_name"] == "Sprint 1"
+    assert len(imported["team_members"]) == 2
+    assert len(imported["group_holidays"]) == 1
+
+
+def test_configuration_csv_export_endpoint_returns_round_trip_file():
+    response = app.test_client().post("/config/to-csv", data={
+        "config_json": json.dumps(sample_config()),
+    })
+
+    assert response.status_code == 200
+    assert response.mimetype == "text/csv"
+    imported = ConfigCsvParser().parse(response.get_data(as_text=True))
+    assert imported["sprint"]["sprint_name"] == "Sprint 1"
+    assert imported["ptos"][0]["hours"] == "4"

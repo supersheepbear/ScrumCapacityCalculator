@@ -51,8 +51,9 @@
     <p class="muted">Plan one Sprint using working hours, holidays, PTO, and a Jira CSV export. Calculations run on this computer.</p>
     <div class="toolbar">
       <button type="button" id="example">Load example</button>
-      <label class="file-button">Import team configuration JSON<input type="file" id="config-file" accept=".json,application/json"></label>
-      <button type="button" id="save-config">Download team configuration</button>
+      <label class="file-button">Import team setup (JSON, CSV, or TSV)<input type="file" id="config-file" accept=".json,.csv,.tsv,application/json,text/csv,text/tab-separated-values"></label>
+      <button type="button" id="save-config-json">Download setup JSON</button>
+      <button type="button" id="save-config-csv">Download setup CSV</button>
     </div>
   </header>
 
@@ -97,8 +98,8 @@
 
     <section class="card">
       <h2>6. Jira tasks</h2>
-      <label>Import Jira CSV file<input type="file" id="jira-file" accept=".csv,text/csv"></label>
-      <p class="muted">Required columns: Issue Key, Assignee, Sprint, Estimate. Summary is optional. Sprint values must match the name above.</p>
+      <label>Import Jira CSV or TSV file<input type="file" id="jira-file" accept=".csv,.tsv,text/csv,text/tab-separated-values"></label>
+      <p class="muted">Import common comma, semicolon, or tab-separated Jira exports. Required fields are Issue Key, Assignee, Sprint, and an hours estimate; Summary is optional. Header names such as Key, Owner, Iteration, and Estimate (hours) are accepted. Sprint values must match the name above.</p>
       <details><summary>Or paste CSV content</summary><textarea id="jira-csv" rows="5" placeholder="Issue Key,Summary,Assignee,Sprint,Estimate"></textarea></details>
       <p><label class="check"><input type="checkbox" id="hours-confirm">I confirm that CSV Estimate values are in <strong>hours</strong> (Story Points or seconds cannot be compared directly).</label></p>
     </section>

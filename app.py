@@ -1,11 +1,15 @@
 """Flask web application for Scrum Capacity Calculator."""
 
-from flask import Flask, render_template, request, jsonify
-import traceback
+import csv
+import json
 import threading
+import traceback
 import webbrowser
 
+from flask import Flask, Response, render_template, request, jsonify
+
 from scrum_capacity_calculator.core.calculator import CapacityCalculator
+from scrum_capacity_calculator.core.config_csv import ConfigCsvParser, serialize_config_csv
 from scrum_capacity_calculator.core.jira_parser import JiraParser
 from scrum_capacity_calculator.utils.config_loader import ConfigLoader
 
@@ -17,6 +21,52 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 def index():
     """Render main input form."""
     return render_template('index.html')
+
+
+@app.route('/config/from-csv', methods=['POST'])
+def config_from_csv():
+    """Parse and validate a team configuration CSV for the browser form."""
+    content = request.form.get('config_csv', '')
+    try:
+        config = ConfigCsvParser().parse(content)
+    except (ValueError, csv.Error) as error:
+        return jsonify({
+            'success': False,
+            'error': 'Configuration CSV parsing failed',
+            'details': [str(error)]
+        }), 400
+
+    valid, _, messages = ConfigLoader().load_from_string(json.dumps(config))
+    if not valid:
+        return jsonify({
+            'success': False,
+            'error': 'Configuration validation failed',
+            'details': messages
+        }), 400
+
+    return jsonify({'success': True, 'config': config, 'warnings': messages})
+
+
+@app.route('/config/to-csv', methods=['POST'])
+def config_to_csv():
+    """Export the browser's current setup using the documented CSV format."""
+    try:
+        config = json.loads(request.form.get('config_json', ''))
+        if not isinstance(config, dict):
+            raise ValueError('Configuration must be a JSON object')
+    except (json.JSONDecodeError, ValueError) as error:
+        return jsonify({
+            'success': False,
+            'error': 'Configuration could not be exported',
+            'details': [str(error)]
+        }), 400
+
+    response = Response(
+        '\ufeff' + serialize_config_csv(config),
+        mimetype='text/csv',
+        headers={'Content-Disposition': 'attachment; filename=team_config.csv'}
+    )
+    return response
 
 
 @app.route('/calculate', methods=['POST'])

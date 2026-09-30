@@ -25,7 +25,20 @@ Open <http://127.0.0.1:5000>. Python 3.10 or newer is required.
 4. Optionally add days off for a specific group and location, plus personal PTO.
 5. Import a Jira CSV, confirm that `Estimate` values are in **hours**, and click **Calculate capacity**.
 
-Click **Load example** to try a calculation immediately. Download the team configuration as JSON and import it for the next Sprint, then update the dates and PTO. The server does not save the configuration. Results can be printed or saved as PDF.
+Click **Load example** to try a calculation immediately. Download the team setup as JSON or CSV and import it for the next Sprint, then update the dates and PTO. Both files include the Sprint, locations, members, group days off, and PTO. The server does not save the configuration. Results can be exported as CSV or printed / saved as PDF.
+
+The setup CSV is designed to open and edit in a spreadsheet. It has one `record_type` column and one row per item. The app exports the complete current setup in this format, so it can be imported again without losing data. Use `|` between multiple dates in `manual_holidays` and `dates` cells.
+
+```csv
+record_type,sprint_name,start_date,end_date,name,jira_name,group,location,country_code,daily_hours,manual_holidays,date,hours,dates
+sprint,Sprint 1,2026-10-05,2026-10-16,,,,,,,,,,
+location,,,,Beijing,,,,CN,,2026-10-02|2026-10-03,,,
+member,,,,Alice,alice,Engineering,Beijing,,8,,,,
+group_holiday,,,,,,Engineering,Beijing,,,,,,2026-10-08|2026-10-09
+pto,,,,Alice,,,,,,,2026-10-12,4,
+```
+
+Use these `record_type` values: `sprint`, `location`, `member`, `group_holiday`, and `pto`. CSV import accepts comma, semicolon, and tab delimiters. JSON remains available if you prefer it.
 
 Required CSV columns:
 
@@ -34,7 +47,7 @@ Issue Key,Summary,Assignee,Sprint,Estimate
 TASK-1,Build feature,alice,Sprint 1,16
 ```
 
-`Summary` is optional. `Sprint` must match the name on the page. `Estimate` must be hours. Story Points cannot be compared directly with hours; convert Jira exports measured in seconds before import. Unassigned tasks, unestimated tasks, and unmatched assignees appear below the results.
+`Summary` is optional. The importer also recognizes common alternatives such as `Key`, `Owner`, `Iteration`, and `Estimate (hours)`. Jira files may use comma, semicolon, or tab delimiters. `Sprint` must match the name on the page. Estimates must be numeric hours; Story Points cannot be compared directly with hours, and values in seconds must be converted before import. Unassigned tasks, unestimated tasks, and unmatched assignees appear below the results.
 
 ## Calculation rules
 

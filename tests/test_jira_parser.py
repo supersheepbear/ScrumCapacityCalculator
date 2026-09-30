@@ -107,3 +107,26 @@ PROJ-1,john.doe,Sprint-1,8"""
 
         with pytest.raises(ValueError, match="Duplicate issue"):
             parser.parse_csv(csv_content)
+
+    def test_accepts_semicolon_export_header_aliases_and_decimal_comma(self, parser):
+        csv_content = "Key;Owner;Iteration;Estimate (hours);Title\nPROJ-1;alice;Sprint-1;1,5;Task"
+
+        tasks = parser.parse_csv(csv_content)
+
+        assert tasks[0].issue_key == "PROJ-1"
+        assert tasks[0].assignee == "alice"
+        assert tasks[0].summary == "Task"
+        assert tasks[0].estimate == 1.5
+
+    def test_accepts_tab_delimited_csv_with_bom(self, parser):
+        csv_content = "\ufeffIssue Key\tAssignee\tSprint\tEstimate\nPROJ-1\talice\tSprint-1\t8"
+
+        tasks = parser.parse_csv(csv_content)
+
+        assert tasks[0].estimate == 8.0
+
+    def test_does_not_treat_story_points_as_estimate_hours(self, parser):
+        csv_content = "Issue Key,Assignee,Sprint,Story Points\nPROJ-1,alice,Sprint-1,5"
+
+        with pytest.raises(ValueError, match="Missing required columns"):
+            parser.parse_csv(csv_content)

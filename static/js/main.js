@@ -111,6 +111,35 @@ function download(name, content, type) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function csvRow(values) {
+  return values.map(value => {
+    const text = String(value ?? "");
+    return '"' + text.replaceAll('"', '""') + '"';
+  }).join(",");
+}
+
+function resultsCsv(data) {
+  const rows = [[
+    "record_type", "sprint_name", "member", "location", "capacity_hours", "planned_hours",
+    "remaining_hours", "load_rate_percent", "status"
+  ]];
+  rows.push([
+    "team", data.sprint.name, "Team", "",
+    data.summary.total_capacity, data.summary.total_planned, data.summary.total_remaining,
+    data.summary.total_capacity ? (data.summary.average_load_rate * 100).toFixed(1) : "",
+    data.summary.overloaded_count + " overloaded / " + data.summary.total_members + " members"
+  ]);
+  for (const result of data.results) {
+    rows.push([
+      "member", data.sprint.name, result.member_name, result.location,
+      result.capacity_hours, result.planned_hours, result.remaining_hours,
+      result.load_rate === null ? "" : (result.load_rate * 100).toFixed(1),
+      result.status === "overload" ? "Overloaded" : result.status === "warning" ? "Near capacity" : "Available"
+    ]);
+  }
+  return "\ufeff" + rows.map(csvRow).join("\r\n") + "\r\n";
+}
+
 function showError(message, details = []) {
   const box = document.getElementById("error");
   box.textContent = [message, ...details].filter(Boolean).join("\n");
@@ -211,7 +240,10 @@ function renderResults(data) {
   const print = document.createElement("button");
   print.textContent = "Print / Save PDF";
   print.onclick = () => window.print();
-  actions.append(back, print);
+  const exportCsv = document.createElement("button");
+  exportCsv.textContent = "Export results CSV";
+  exportCsv.onclick = () => download("capacity_results.csv", resultsCsv(data), "text/csv;charset=utf-8");
+  actions.append(back, exportCsv, print);
   target.append(actions);
   document.getElementById("input-area").hidden = true;
   target.hidden = false;
@@ -261,14 +293,53 @@ document.querySelectorAll("[data-add]").forEach(button => {
   button.addEventListener("click", () => addRow(button.dataset.add));
 });
 document.getElementById("calculate").addEventListener("click", calculate);
-document.getElementById("save-config").addEventListener("click", () => {
+document.getElementById("save-config-json").addEventListener("click", () => {
   download("team_config.json", JSON.stringify(config(), null, 2), "application/json");
+});
+document.getElementById("save-config-csv").addEventListener("click", async () => {
+  try {
+    const response = await fetch("/config/to-csv", {
+      method: "POST",
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      body: new URLSearchParams({config_json: JSON.stringify(config())})
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      showError(data.error || "Could not export configuration CSV", data.details || []);
+      return;
+    }
+    download("team_config.csv", await response.text(), "text/csv;charset=utf-8");
+  } catch (error) {
+    showError("Could not export configuration CSV: " + error.message);
+  }
 });
 document.getElementById("config-file").addEventListener("change", async event => {
   const file = event.target.files[0];
   if (!file) return;
-  try { loadConfig(JSON.parse(await file.text())); }
-  catch (error) { showError("The configuration file is not valid JSON: " + error.message); }
+  try {
+    if (/\.(csv|tsv)$/i.test(file.name) || file.type === "text/csv" || file.type === "text/tab-separated-values") {
+      const response = await fetch("/config/from-csv", {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: new URLSearchParams({config_csv: await file.text()})
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        showError(data.error || "Could not import configuration CSV", data.details || []);
+      } else {
+        loadConfig(data.config);
+      }
+    } else {
+      const parsed = JSON.parse(await file.text());
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed) ||
+          !parsed.sprint || !Array.isArray(parsed.locations) || !Array.isArray(parsed.team_members)) {
+        throw new Error("JSON must include sprint, locations, and team_members sections.");
+      }
+      loadConfig(parsed);
+    }
+  } catch (error) {
+    showError("Could not import the configuration file: " + error.message);
+  }
   event.target.value = "";
 });
 document.getElementById("jira-file").addEventListener("change", async event => {
