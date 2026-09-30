@@ -14,6 +14,7 @@ from scrum_capacity_calculator.core.jira_parser import JiraParser
 from scrum_capacity_calculator.utils.config_loader import ConfigLoader
 
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
 

@@ -6,6 +6,10 @@ from app import app
 from scrum_capacity_calculator.core.config_csv import ConfigCsvParser, serialize_config_csv
 
 
+def test_app_reloads_templates_when_the_local_ui_changes():
+    assert app.jinja_env.auto_reload is True
+
+
 def sample_config():
     return {
         "sprint": {"sprint_name": "Sprint 1", "start_date": "2024-01-08", "end_date": "2024-01-19"},
