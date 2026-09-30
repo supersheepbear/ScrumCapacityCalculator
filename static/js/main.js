@@ -1,5 +1,15 @@
 // Main JavaScript for Scrum Capacity Calculator
 
+// Check if config was generated from editor
+window.addEventListener('DOMContentLoaded', function() {
+    const storedConfig = localStorage.getItem('teamConfig');
+    if (storedConfig) {
+        document.getElementById('config-json').value = storedConfig;
+        localStorage.removeItem('teamConfig');
+        showSuccess('Configuration loaded from editor');
+    }
+});
+
 // File upload handlers
 document.getElementById('config-file').addEventListener('change', function(e) {
     const file = e.target.files[0];

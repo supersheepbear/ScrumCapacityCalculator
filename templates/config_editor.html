@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuration Editor - Scrum Capacity Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 25px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        .section-title {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-right: 10px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .item-list {
+            margin-top: 15px;
+        }
+
+        .item {
+            background: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 6px;
+            border-left: 4px solid #667eea;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .inline-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .help-text {
+            font-size: 0.85em;
+            color: #777;
+            margin-top: 5px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚙️ Configuration Editor</h1>
+            <p>Configure your team for capacity calculation</p>
+        </header>
+
+        <div class="content">
+            <!-- Sprint Configuration -->
+            <div class="section">
+                <h2 class="section-title">Sprint Configuration</h2>
+                <div class="form-group">
+                    <label for="sprint-name">Sprint Name</label>
+                    <input type="text" id="sprint-name" placeholder="2024-Q1-Sprint-1" required>
+                    <div class="help-text">e.g., 2024-Q1-Sprint-1</div>
+                </div>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label for="start-date">Start Date</label>
+                        <input type="date" id="start-date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="end-date">End Date</label>
+                        <input type="date" id="end-date" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Team Members -->
+            <div class="section">
+                <h2 class="section-title">Team Members</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label for="member-name">Name</label>
+                        <input type="text" id="member-name" placeholder="张三">
+                    </div>
+                    <div class="form-group">
+                        <label for="member-jira">Jira Username</label>
+                        <input type="text" id="member-jira" placeholder="john.doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="member-hours">Daily Hours</label>
+                        <input type="number" id="member-hours" value="8" min="1" max="24">
+                    </div>
+                    <div class="form-group">
+                        <label for="member-location">Location</label>
+                        <input type="text" id="member-location" placeholder="Beijing">
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="addMember()">➕ Add Member</button>
+                <div class="item-list" id="members-list"></div>
+            </div>
+
+            <!-- Locations -->
+            <div class="section">
+                <h2 class="section-title">Office Locations</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label for="location-name">Location Name</label>
+                        <input type="text" id="location-name" placeholder="Beijing">
+                    </div>
+                    <div class="form-group">
+                        <label for="location-country">Country Code</label>
+                        <input type="text" id="location-country" placeholder="CN" maxlength="2">
+                        <div class="help-text">CN, US, IN, SG, etc.</div>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="addLocation()">➕ Add Location</button>
+                <div class="item-list" id="locations-list"></div>
+            </div>
+
+            <!-- PTO Entries -->
+            <div class="section">
+                <h2 class="section-title">PTO (Time Off)</h2>
+                <div class="inline-form">
+                    <div class="form-group">
+                        <label for="pto-name">Member Name</label>
+                        <input type="text" id="pto-name" placeholder="张三">
+                    </div>
+                    <div class="form-group">
+                        <label for="pto-date">Date</label>
+                        <input type="date" id="pto-date">
+                    </div>
+                    <div class="form-group">
+                        <label for="pto-hours">Hours</label>
+                        <input type="number" id="pto-hours" value="8" min="0.5" step="0.5">
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="addPTO()">➕ Add PTO</button>
+                <div class="item-list" id="pto-list"></div>
+            </div>
+
+            <!-- Actions -->
+            <div class="button-group">
+                <button class="btn btn-primary" onclick="generateConfig()">
+                    ✨ Generate Configuration
+                </button>
+                <button class="btn btn-secondary" onclick="loadExample()">
+                    📋 Load Example
+                </button>
+                <button class="btn btn-secondary" onclick="downloadConfig()">
+                    💾 Download as File
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let members = [];
+        let locations = [];
+        let ptos = [];
+
+        function addMember() {
+            const name = document.getElementById('member-name').value.trim();
+            const jira = document.getElementById('member-jira').value.trim();
+            const hours = parseFloat(document.getElementById('member-hours').value);
+            const location = document.getElementById('member-location').value.trim();
+
+            if (!name || !jira || !location) {
+                alert('Please fill all member fields');
+                return;
+            }
+
+            members.push({ name, jira_name: jira, daily_hours: hours, location });
+            renderMembers();
+
+            // Clear inputs
+            document.getElementById('member-name').value = '';
+            document.getElementById('member-jira').value = '';
+            document.getElementById('member-hours').value = '8';
+            document.getElementById('member-location').value = '';
+        }
+
+        function removeMember(index) {
+            members.splice(index, 1);
+            renderMembers();
+        }
+
+        function renderMembers() {
+            const list = document.getElementById('members-list');
+            list.innerHTML = members.map((m, i) => `
+                <div class="item">
+                    <div class="item-info">
+                        <strong>${m.name}</strong> (${m.jira_name}) - ${m.daily_hours}h/day - ${m.location}
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-danger" onclick="removeMember(${i})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addLocation() {
+            const name = document.getElementById('location-name').value.trim();
+            const country = document.getElementById('location-country').value.trim().toUpperCase();
+
+            if (!name || !country) {
+                alert('Please fill location name and country code');
+                return;
+            }
+
+            locations.push({ name, country_code: country, manual_holidays: [] });
+            renderLocations();
+
+            document.getElementById('location-name').value = '';
+            document.getElementById('location-country').value = '';
+        }
+
+        function removeLocation(index) {
+            locations.splice(index, 1);
+            renderLocations();
+        }
+
+        function renderLocations() {
+            const list = document.getElementById('locations-list');
+            list.innerHTML = locations.map((l, i) => `
+                <div class="item">
+                    <div class="item-info">
+                        <strong>${l.name}</strong> - ${l.country_code}
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-danger" onclick="removeLocation(${i})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addPTO() {
+            const name = document.getElementById('pto-name').value.trim();
+            const date = document.getElementById('pto-date').value;
+            const hours = parseFloat(document.getElementById('pto-hours').value);
+
+            if (!name || !date) {
+                alert('Please fill PTO name and date');
+                return;
+            }
+
+            ptos.push({ name, date, hours });
+            renderPTOs();
+
+            document.getElementById('pto-name').value = '';
+            document.getElementById('pto-date').value = '';
+            document.getElementById('pto-hours').value = '8';
+        }
+
+        function removePTO(index) {
+            ptos.splice(index, 1);
+            renderPTOs();
+        }
+
+        function renderPTOs() {
+            const list = document.getElementById('pto-list');
+            list.innerHTML = ptos.map((p, i) => `
+                <div class="item">
+                    <div class="item-info">
+                        <strong>${p.name}</strong> - ${p.date} (${p.hours}h)
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-danger" onclick="removePTO(${i})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function generateConfig() {
+            const sprintName = document.getElementById('sprint-name').value.trim();
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+
+            if (!sprintName || !startDate || !endDate) {
+                alert('Please fill sprint configuration');
+                return;
+            }
+
+            if (members.length === 0) {
+                alert('Please add at least one team member');
+                return;
+            }
+
+            if (locations.length === 0) {
+                alert('Please add at least one location');
+                return;
+            }
+
+            const config = {
+                sprint: {
+                    sprint_name: sprintName,
+                    start_date: startDate,
+                    end_date: endDate
+                },
+                team_members: members,
+                locations: locations,
+                ptos: ptos
+            };
+
+            // Redirect to main page with config
+            localStorage.setItem('teamConfig', JSON.stringify(config, null, 2));
+            window.location.href = '/';
+        }
+
+        function downloadConfig() {
+            const sprintName = document.getElementById('sprint-name').value.trim();
+            const startDate = document.getElementById('start-date').value;
+            const endDate = document.getElementById('end-date').value;
+
+            const config = {
+                sprint: {
+                    sprint_name: sprintName || "Sprint-1",
+                    start_date: startDate || "2024-01-08",
+                    end_date: endDate || "2024-01-19"
+                },
+                team_members: members,
+                locations: locations,
+                ptos: ptos
+            };
+
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'team_config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function loadExample() {
+            document.getElementById('sprint-name').value = '2024-Q1-Sprint-1';
+            document.getElementById('start-date').value = '2024-01-08';
+            document.getElementById('end-date').value = '2024-01-19';
+
+            members = [
+                { name: '张三', jira_name: 'john.doe', daily_hours: 8, location: 'Beijing' },
+                { name: '李四', jira_name: 'jane.smith', daily_hours: 6, location: 'Shanghai' }
+            ];
+
+            locations = [
+                { name: 'Beijing', country_code: 'CN', manual_holidays: [] },
+                { name: 'Shanghai', country_code: 'CN', manual_holidays: [] }
+            ];
+
+            ptos = [
+                { name: '张三', date: '2024-01-10', hours: 8 }
+            ];
+
+            renderMembers();
+            renderLocations();
+            renderPTOs();
+        }
+    </script>
+</body>
+</html>

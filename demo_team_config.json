@@ -1,0 +1,51 @@
+{
+  "sprint": {
+    "sprint_name": "2024-Q1-Sprint-1",
+    "start_date": "2024-01-08",
+    "end_date": "2024-01-19"
+  },
+  "team_members": [
+    {
+      "name": "张三",
+      "jira_name": "john.doe",
+      "daily_hours": 8,
+      "location": "Beijing"
+    },
+    {
+      "name": "李四",
+      "jira_name": "jane.smith",
+      "daily_hours": 6,
+      "location": "Shanghai"
+    },
+    {
+      "name": "王五",
+      "jira_name": "bob.lee",
+      "daily_hours": 8,
+      "location": "Beijing"
+    }
+  ],
+  "locations": [
+    {
+      "name": "Beijing",
+      "country_code": "CN",
+      "manual_holidays": []
+    },
+    {
+      "name": "Shanghai",
+      "country_code": "CN",
+      "manual_holidays": []
+    }
+  ],
+  "ptos": [
+    {
+      "name": "张三",
+      "date": "2024-01-10",
+      "hours": 8
+    },
+    {
+      "name": "李四",
+      "date": "2024-01-15",
+      "hours": 3
+    }
+  ]
+}

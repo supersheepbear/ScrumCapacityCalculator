@@ -18,6 +18,12 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/config-editor')
+def config_editor():
+    """Render configuration editor."""
+    return render_template('config_editor.html')
+
+
 @app.route('/calculate', methods=['POST'])
 def calculate():
     """Calculate capacity and return results."""

@@ -8,13 +8,14 @@ A simple web application to calculate Scrum team capacity and identify overloade
 
 ## ✨ Features
 
+- 🎨 **Visual Configuration Editor** - User-friendly web form to create team configurations without editing JSON
 - 📅 **Calendar-based capacity calculation** - Automatically accounts for weekends, holidays, and PTO
 - 🌍 **Multi-location support** - Different holiday calendars for different office locations
 - 📊 **Jira integration** - Import planned work from Jira CSV exports
 - 🚨 **Overload detection** - Clearly highlights team members with too much work
 - 📈 **Team summary** - Overview of total capacity, planned work, and load rates
 - ⚠️ **Smart warnings** - Identifies unassigned tasks, unestimated work, and unmatched assignees
-- 💾 **Report export** - Save results as HTML for sharing
+- 💾 **Configuration export** - Save generated configurations as JSON files
 
 ## 🚀 Quick Start
 
@@ -48,9 +49,42 @@ That's it! 🎉
 
 ## 📖 Usage
 
-### 1. Prepare Team Configuration
+### Option 1: Visual Configuration Editor (Recommended) ✨
 
-Create a JSON file with your team setup. You can download the template from the web interface or use this example:
+**No JSON editing required!**
+
+1. **Start the application**
+   ```bash
+   python app.py
+   ```
+
+2. **Open your browser** at `http://localhost:5000`
+
+3. **Click "⚙️ Open Config Editor"** button in the header
+
+4. **Fill in the form**:
+   - Set sprint name, start date, and end date
+   - Add team members with their Jira usernames, daily hours, and locations
+   - Add office locations with country codes (CN, US, IN, etc.)
+   - Add PTO (time-off) entries for team members
+   - Click "📋 Load Example" to see sample data
+
+5. **Generate configuration**: Click "✨ Generate Configuration"
+   - The system validates your input and auto-fills the main page
+
+6. **Add Jira data**: Paste your Jira CSV export in the second text area
+
+7. **Calculate**: Click "✨ Calculate Capacity" to see results
+
+👉 See [DEMO_WALKTHROUGH_CN.md](DEMO_WALKTHROUGH_CN.md) for detailed step-by-step guide with screenshots.
+
+### Option 2: Manual JSON Configuration
+
+#### 1. Prepare Team Configuration
+
+#### 1. Prepare Team Configuration
+
+Create a JSON file with your team setup. You can use the visual config editor or create manually:
 
 ```json
 {
@@ -84,7 +118,7 @@ Create a JSON file with your team setup. You can download the template from the 
 }
 ```
 
-### 2. Export Data from Jira
+#### 2. Export Data from Jira
 
 Export your sprint tasks as CSV with these required columns:
 - **Issue Key** (e.g., PROJ-123)
@@ -92,12 +126,12 @@ Export your sprint tasks as CSV with these required columns:
 - **Sprint** (must match `sprint_name` in config)
 - **Estimate** (in hours)
 
-### 3. Calculate Capacity
+#### 3. Calculate Capacity
 
 1. Upload or paste your team configuration
 2. Upload or paste your Jira CSV export
 3. Click "Calculate Capacity"
-4. Review results and save the report
+4. Review results with status indicators (🟢 Normal, 🟡 Warning, 🔴 Overload)
 
 ## 📊 How It Works
 
@@ -134,27 +168,31 @@ Load Rate = Planned Work (hours) ÷ Capacity (hours) × 100%
 ScrumBoardTool/
 ├── app.py                      # Flask web application
 ├── requirements.txt            # Python dependencies
+├── README.md                   # This file
+├── USER_GUIDE.md              # Detailed user guide
+├── DEMO_WALKTHROUGH_CN.md     # Chinese demo walkthrough
 ├── config/
 │   ├── system_config.json      # System settings
 │   └── team_config_template.json
 ├── src/
-│   ├── core/
-│   │   ├── calculator.py       # Core capacity logic
-│   │   ├── calendar_service.py # Working day calculations
-│   │   └── jira_parser.py      # CSV parsing
-│   ├── models/
-│   │   └── __init__.py         # Data models
-│   ├── validators/
-│   │   └── config_validator.py # Input validation
-│   └── utils/
-│       └── config_loader.py    # Configuration loader
+│   └── scrum_capacity_calculator/
+│       ├── core/
+│       │   ├── calculator.py       # Core capacity logic
+│       │   ├── calendar_service.py # Working day calculations
+│       │   └── jira_parser.py      # CSV parsing
+│       ├── models/
+│       │   └── __init__.py         # Data models
+│       ├── validators/
+│       │   └── config_validator.py # Input validation
+│       └── utils/
+│           └── config_loader.py    # Configuration loader
 ├── templates/
-│   └── index.html              # Web UI
+│   ├── index.html              # Main calculator UI
+│   └── config_editor.html      # Visual config editor
 ├── static/
 │   └── js/
 │       └── main.js             # Frontend logic
-├── tests/                      # Unit tests
-└── docs/                       # Documentation
+└── tests/                      # Unit tests (53 tests, 86% coverage)
 ```
 
 ## 🧪 Testing
@@ -202,9 +240,9 @@ The application uses the [python-holidays](https://github.com/dr-prodigy/python-
 
 ## 📝 Documentation
 
-- [User Guide](docs/USER_GUIDE.md) - Detailed usage instructions
-- [Maintenance Guide](docs/MAINTENANCE.md) - How to maintain and update
-- [Extension Guide](docs/EXTENSION_GUIDE.md) - How to add new features
+- [User Guide](USER_GUIDE.md) - Detailed usage instructions and tips
+- [Demo Walkthrough (中文)](DEMO_WALKTHROUGH_CN.md) - Step-by-step guide with examples
+- [Technical Specification](SPEC.md) - Technical details and requirements
 - [Domain Context](CONTEXT.md) - Domain terminology and concepts
 
 ## ❓ Troubleshooting
