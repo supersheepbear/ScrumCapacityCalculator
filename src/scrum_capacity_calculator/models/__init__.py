@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 from typing import Optional
+import math
 
 
 @dataclass
@@ -13,15 +14,18 @@ class TeamMember:
     daily_hours: float
     location: str
     jira_name: Optional[str] = None
+    group: str = "Team"
 
     def __post_init__(self):
         """Validate member data."""
-        if self.daily_hours <= 0 or self.daily_hours > 24:
+        if not math.isfinite(self.daily_hours) or self.daily_hours <= 0 or self.daily_hours > 24:
             raise ValueError(f"daily_hours must be between 0 and 24, got {self.daily_hours}")
         if not self.name or not self.name.strip():
             raise ValueError("name cannot be empty")
         if not self.location or not self.location.strip():
             raise ValueError("location cannot be empty")
+        if not self.group or not self.group.strip():
+            raise ValueError("group cannot be empty")
 
         # Default jira_name to name if not provided
         if self.jira_name is None:
@@ -49,14 +53,6 @@ class Sprint:
                 f"end_date ({self.end_date}) must be after start_date ({self.start_date})"
             )
 
-        # Calculate duration and warn if not 14 days
-        duration = (self.end_date - self.start_date).days
-        if duration != 13:  # 13 days difference = 14 calendar days inclusive
-            import warnings
-            warnings.warn(
-                f"Sprint duration is {duration + 1} days, expected 14 days",
-                UserWarning
-            )
 
     @property
     def duration_days(self) -> int:
@@ -76,7 +72,7 @@ class PTOEntry:
         """Validate PTO data."""
         if not self.name or not self.name.strip():
             raise ValueError("name cannot be empty")
-        if self.hours <= 0:
+        if not math.isfinite(self.hours) or self.hours <= 0:
             raise ValueError(f"hours must be positive, got {self.hours}")
 
 
@@ -112,7 +108,7 @@ class JiraTask:
         """Validate task data."""
         if not self.issue_key or not self.issue_key.strip():
             raise ValueError("issue_key cannot be empty")
-        if self.estimate < 0:
+        if not math.isfinite(self.estimate) or self.estimate < 0:
             raise ValueError(f"estimate cannot be negative, got {self.estimate}")
 
 
@@ -125,33 +121,17 @@ class CapacityResult:
     capacity_hours: float
     planned_hours: float
     remaining_hours: float
-    load_rate: float
+    load_rate: Optional[float]
 
     @property
     def status(self) -> str:
         """Get load status indicator."""
-        if self.load_rate > 1.0:
+        if self.remaining_hours < 0:
             return "overload"
-        elif self.load_rate >= 0.8:
+        elif self.load_rate is not None and self.load_rate >= 0.8:
             return "warning"
         else:
             return "normal"
-
-    @property
-    def status_icon(self) -> str:
-        """Get status icon."""
-        status_icons = {
-            "overload": "🔴",
-            "warning": "⚠️",
-            "normal": "✅"
-        }
-        return status_icons[self.status]
-
-    def format_hours(self, hours: float, hours_per_day: int = 8) -> str:
-        """Format hours with day equivalent."""
-        days = hours / hours_per_day
-        return f"{hours:.1f}h ({days:.1f}d)"
-
 
 @dataclass
 class TeamSummary:
@@ -163,8 +143,3 @@ class TeamSummary:
     average_load_rate: float
     overloaded_count: int
     total_members: int
-
-    def format_hours(self, hours: float, hours_per_day: int = 8) -> str:
-        """Format hours with day equivalent."""
-        days = hours / hours_per_day
-        return f"{hours:.1f}h ({days:.1f}d)"

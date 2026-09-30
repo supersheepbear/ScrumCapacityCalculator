@@ -3,6 +3,8 @@
 from datetime import datetime, date
 from typing import Dict, List, Any, Tuple
 import json
+import math
+import holidays
 
 
 class ConfigValidator:
@@ -27,6 +29,8 @@ class ConfigValidator:
         self.warnings = []
 
         # Validate structure
+        if not isinstance(config_data, dict):
+            return False, ["Configuration must be a JSON object"], []
         self._validate_structure(config_data)
 
         if not self.errors:
@@ -35,6 +39,9 @@ class ConfigValidator:
             self._validate_team_members(config_data.get("team_members", []))
             self._validate_locations(config_data.get("locations", []))
             self._validate_ptos(config_data.get("ptos", []))
+            self._validate_group_holidays(config_data.get("group_holidays", []))
+            if not self.errors:
+                self._validate_references(config_data)
 
         is_valid = len(self.errors) == 0
         return is_valid, self.errors, self.warnings
@@ -46,10 +53,16 @@ class ConfigValidator:
         for key in required_keys:
             if key not in config:
                 self.errors.append(f"Missing required section: '{key}'")
+        expected = {"sprint": dict, "team_members": list, "locations": list,
+                    "ptos": list, "group_holidays": list}
+        for key, kind in expected.items():
+            if key in config and not isinstance(config[key], kind):
+                self.errors.append(f"'{key}' must be a {kind.__name__}")
 
     def _validate_sprint(self, sprint: Dict[str, Any]):
         """Validate sprint configuration."""
         if not sprint:
+            self.errors.append("Sprint details are required")
             return
 
         # Check required fields
@@ -60,7 +73,7 @@ class ConfigValidator:
                 return
 
         # Validate sprint name
-        if not sprint["sprint_name"] or not sprint["sprint_name"].strip():
+        if not isinstance(sprint["sprint_name"], str) or not sprint["sprint_name"].strip():
             self.errors.append("Sprint name cannot be empty")
 
         # Validate dates
@@ -76,9 +89,9 @@ class ConfigValidator:
 
             # Check duration
             duration = (end_date - start_date).days + 1
-            if duration != 14:
+            if duration not in (12, 14):
                 self.warnings.append(
-                    f"Sprint duration is {duration} days (expected 14 days)"
+                    f"Sprint duration is {duration} days (two weeks usually spans 12 or 14 inclusive calendar days)"
                 )
 
         except ValueError as e:
@@ -95,6 +108,9 @@ class ConfigValidator:
 
         for idx, member in enumerate(members):
             prefix = f"Team member {idx + 1}"
+            if not isinstance(member, dict):
+                self.errors.append(f"{prefix} must be an object")
+                continue
 
             # Required fields
             if "name" not in member:
@@ -109,7 +125,7 @@ class ConfigValidator:
 
             # Validate name
             name = member["name"]
-            if not name or not name.strip():
+            if not isinstance(name, str) or not name.strip():
                 self.errors.append(f"{prefix}: name cannot be empty")
             elif name in names:
                 self.errors.append(f"{prefix}: duplicate name '{name}'")
@@ -119,7 +135,7 @@ class ConfigValidator:
             # Validate daily_hours
             try:
                 hours = float(member["daily_hours"])
-                if hours <= 0 or hours > 24:
+                if not math.isfinite(hours) or hours <= 0 or hours > 24:
                     self.errors.append(
                         f"{prefix} ({name}): daily_hours must be between 0 and 24, got {hours}"
                     )
@@ -128,15 +144,17 @@ class ConfigValidator:
                     f"{prefix} ({name}): daily_hours must be a number"
                 )
 
-            # Validate jira_name if provided
-            if "jira_name" in member and member["jira_name"]:
-                jira_name = member["jira_name"]
-                if jira_name in jira_names:
-                    self.errors.append(
-                        f"{prefix} ({name}): duplicate jira_name '{jira_name}'"
-                    )
-                else:
-                    jira_names.add(jira_name)
+            if not isinstance(member["location"], str) or not member["location"].strip():
+                self.errors.append(f"{prefix} ({name}): location cannot be empty")
+            jira_name = member.get("jira_name") or name
+            if not isinstance(jira_name, str):
+                self.errors.append(f"{prefix} ({name}): jira_name must be text")
+            elif jira_name in jira_names:
+                self.errors.append(f"{prefix} ({name}): duplicate jira_name '{jira_name}'")
+            else:
+                jira_names.add(jira_name)
+            if "group" in member and (not isinstance(member["group"], str) or not member["group"].strip()):
+                self.errors.append(f"{prefix} ({name}): group cannot be empty")
 
     def _validate_locations(self, locations: List[Dict[str, Any]]):
         """Validate locations."""
@@ -148,6 +166,9 @@ class ConfigValidator:
 
         for idx, location in enumerate(locations):
             prefix = f"Location {idx + 1}"
+            if not isinstance(location, dict):
+                self.errors.append(f"{prefix} must be an object")
+                continue
 
             # Required fields
             if "name" not in location:
@@ -159,7 +180,7 @@ class ConfigValidator:
 
             # Validate name
             name = location["name"]
-            if not name or not name.strip():
+            if not isinstance(name, str) or not name.strip():
                 self.errors.append(f"{prefix}: name cannot be empty")
             elif name in location_names:
                 self.errors.append(f"{prefix}: duplicate location name '{name}'")
@@ -167,18 +188,21 @@ class ConfigValidator:
                 location_names.add(name)
 
             # Validate country code
-            if not location["country_code"] or not location["country_code"].strip():
+            code = location["country_code"]
+            if not isinstance(code, str) or not code.strip():
                 self.errors.append(f"{prefix} ({name}): country_code cannot be empty")
+            elif code.upper() not in holidays.list_supported_countries():
+                self.errors.append(f"{prefix} ({name}): unsupported country code '{code}'")
 
             # Validate manual_holidays if provided
             if "manual_holidays" in location:
-                holidays = location["manual_holidays"]
-                if not isinstance(holidays, list):
+                manual_dates = location["manual_holidays"]
+                if not isinstance(manual_dates, list):
                     self.errors.append(
                         f"{prefix} ({name}): manual_holidays must be a list"
                     )
                 else:
-                    for h_idx, holiday in enumerate(holidays):
+                    for h_idx, holiday in enumerate(manual_dates):
                         try:
                             self._parse_date(holiday)
                         except ValueError:
@@ -191,6 +215,9 @@ class ConfigValidator:
         """Validate PTO entries."""
         for idx, pto in enumerate(ptos):
             prefix = f"PTO {idx + 1}"
+            if not isinstance(pto, dict):
+                self.errors.append(f"{prefix} must be an object")
+                continue
 
             # Required fields
             if "name" not in pto:
@@ -202,6 +229,8 @@ class ConfigValidator:
             if "hours" not in pto:
                 self.errors.append(f"{prefix}: missing 'hours'")
                 continue
+            if not isinstance(pto["name"], str) or not pto["name"].strip():
+                self.errors.append(f"{prefix}: name cannot be empty")
 
             # Validate date
             try:
@@ -214,7 +243,7 @@ class ConfigValidator:
             # Validate hours
             try:
                 hours = float(pto["hours"])
-                if hours <= 0:
+                if not math.isfinite(hours) or hours <= 0:
                     self.errors.append(
                         f"{prefix} ({pto['name']}): hours must be positive, got {hours}"
                     )
@@ -222,6 +251,51 @@ class ConfigValidator:
                 self.errors.append(
                     f"{prefix} ({pto['name']}): hours must be a number"
                 )
+
+    def _validate_references(self, config: Dict[str, Any]):
+        locations = {item.get("name") for item in config.get("locations", []) if isinstance(item, dict)}
+        members = {item.get("name") for item in config.get("team_members", []) if isinstance(item, dict)}
+        for member in config.get("team_members", []):
+            if isinstance(member, dict) and member.get("location") not in locations:
+                self.errors.append(f"Unknown location for member '{member.get('name')}': {member.get('location')}")
+        for pto in config.get("ptos", []):
+            if isinstance(pto, dict) and pto.get("name") not in members:
+                self.errors.append(f"PTO references unknown member: {pto.get('name')}")
+        groups_at_location = {
+            (member.get("group", "Team"), member.get("location"))
+            for member in config.get("team_members", []) if isinstance(member, dict)
+        }
+        for rule in config.get("group_holidays", []):
+            if isinstance(rule, dict) and (rule.get("group"), rule.get("location")) not in groups_at_location:
+                self.errors.append(
+                    f"Group holiday has no matching member: {rule.get('group')} / {rule.get('location')}"
+                )
+
+    def _validate_group_holidays(self, rules):
+        if not isinstance(rules, list):
+            self.errors.append("group_holidays must be a list")
+            return
+        seen = set()
+        for index, rule in enumerate(rules, 1):
+            if not isinstance(rule, dict):
+                self.errors.append(f"Group holiday {index} must be an object")
+                continue
+            key = (rule.get("group"), rule.get("location"))
+            if not all(isinstance(part, str) and part.strip() for part in key):
+                self.errors.append(f"Group holiday {index} needs group and location")
+                continue
+            if key in seen:
+                self.errors.append(f"Duplicate group holiday rule: {key}")
+            seen.add(key)
+            dates = rule.get("dates")
+            if not isinstance(dates, list):
+                self.errors.append(f"Group holiday {index}: dates must be a list")
+                continue
+            for day in dates:
+                try:
+                    self._parse_date(day)
+                except ValueError:
+                    self.errors.append(f"Group holiday {index}: invalid date '{day}'")
 
     def _parse_date(self, date_str: str) -> date:
         """

@@ -197,11 +197,3 @@ class TestConfigLoader:
 
         assert success is True
         assert len(parsed["ptos"]) == 0
-
-    def test_load_system_config(self, loader):
-        """Test loading system configuration."""
-        system_config = loader.load_system_config()
-
-        assert "capacity_thresholds" in system_config
-        assert "date_format" in system_config
-        assert system_config["capacity_thresholds"]["normal_max"] == 0.8

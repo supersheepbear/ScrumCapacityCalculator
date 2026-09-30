@@ -1,8 +1,9 @@
 """Flask web application for Scrum Capacity Calculator."""
 
 from flask import Flask, render_template, request, jsonify
-from pathlib import Path
 import traceback
+import threading
+import webbrowser
 
 from scrum_capacity_calculator.core.calculator import CapacityCalculator
 from scrum_capacity_calculator.core.jira_parser import JiraParser
@@ -18,12 +19,6 @@ def index():
     return render_template('index.html')
 
 
-@app.route('/config-editor')
-def config_editor():
-    """Render configuration editor."""
-    return render_template('config_editor.html')
-
-
 @app.route('/calculate', methods=['POST'])
 def calculate():
     """Calculate capacity and return results."""
@@ -36,6 +31,12 @@ def calculate():
             return jsonify({
                 'success': False,
                 'error': 'Configuration data is required'
+            }), 400
+
+        if request.form.get('estimate_unit') != 'hours':
+            return jsonify({
+                'success': False,
+                'error': 'Confirm that Jira Estimate values are hours. Story Points and seconds cannot be compared with capacity hours.'
             }), 400
 
         if not jira_csv:
@@ -75,6 +76,13 @@ def calculate():
                 'details': multi_assignee_errors
             }), 400
 
+        sprint_name = parsed_config['sprint'].sprint_name
+        if not any(task.sprint == sprint_name for task in tasks):
+            return jsonify({
+                'success': False,
+                'error': f"No Jira tasks match Sprint '{sprint_name}'. Check the Sprint name and CSV."
+            }), 400
+
         # Calculate capacity
         calculator = CapacityCalculator()
         sprint = parsed_config['sprint']
@@ -83,7 +91,7 @@ def calculate():
         ptos = parsed_config['ptos']
 
         results = calculator.calculate_capacity_results(
-            members, sprint, locations, ptos, tasks
+            members, sprint, locations, ptos, tasks, parsed_config['group_holidays']
         )
         summary = calculator.calculate_team_summary(results)
         unassigned = calculator.get_unassigned_tasks(sprint, tasks)
@@ -107,8 +115,7 @@ def calculate():
                     'planned_hours': r.planned_hours,
                     'remaining_hours': r.remaining_hours,
                     'load_rate': r.load_rate,
-                    'status': r.status,
-                    'status_icon': r.status_icon
+                    'status': r.status
                 }
                 for r in results
             ],
@@ -161,30 +168,6 @@ def calculate():
         }), 500
 
 
-@app.route('/download-template')
-def download_template():
-    """Download configuration template."""
-    template_path = Path(__file__).parent / 'config' / 'team_config_template.json'
-
-    try:
-        with open(template_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return content, 200, {
-            'Content-Type': 'application/json',
-            'Content-Disposition': 'attachment; filename=team_config_template.json'
-        }
-    except Exception as e:
-        return jsonify({
-            'error': f'Failed to load template: {str(e)}'
-        }), 500
-
-
-@app.route('/health')
-def health():
-    """Health check endpoint."""
-    return jsonify({'status': 'healthy'})
-
-
 if __name__ == '__main__':
     print("=" * 60)
     print("Scrum Capacity Calculator")
@@ -193,4 +176,5 @@ if __name__ == '__main__':
     print("\nPress Ctrl+C to stop")
     print("=" * 60)
 
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    threading.Timer(1.0, lambda: webbrowser.open('http://127.0.0.1:5000')).start()
+    app.run(debug=False, host='127.0.0.1', port=5000)

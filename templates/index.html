@@ -1,277 +1,113 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scrum Capacity Calculator</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-
-        header p {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-
-        .content {
-            padding: 40px;
-        }
-
-        .section {
-            margin-bottom: 30px;
-        }
-
-        .section-title {
-            font-size: 1.5em;
-            color: #333;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-        }
-
-        .section-title::before {
-            content: '';
-            width: 4px;
-            height: 24px;
-            background: #667eea;
-            margin-right: 12px;
-            border-radius: 2px;
-        }
-
-        .input-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            color: #555;
-            margin-bottom: 8px;
-        }
-
-        textarea {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 13px;
-            resize: vertical;
-            transition: border-color 0.3s;
-        }
-
-        textarea:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        .file-upload {
-            border: 2px dashed #ccc;
-            border-radius: 6px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .file-upload:hover {
-            border-color: #667eea;
-            background: #f8f9ff;
-        }
-
-        .file-upload input[type="file"] {
-            display: none;
-        }
-
-        .btn {
-            padding: 14px 28px;
-            font-size: 16px;
-            font-weight: 600;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: #667eea;
-            border: 2px solid #667eea;
-        }
-
-        .btn-secondary:hover {
-            background: #f8f9ff;
-        }
-
-        .button-group {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
-        }
-
-        .alert {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
-        }
-
-        .alert-error {
-            background: #fee;
-            border: 1px solid #fcc;
-            color: #c33;
-        }
-
-        .alert-success {
-            background: #efe;
-            border: 1px solid #cfc;
-            color: #3c3;
-        }
-
-        .help-text {
-            font-size: 0.9em;
-            color: #777;
-            margin-top: 5px;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .loading.active {
-            display: block;
-        }
-
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 10px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        #results {
-            display: none;
-        }
-    </style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Scrum Capacity</title>
+  <style>
+    :root { font-family: system-ui, "Microsoft YaHei", sans-serif; color: #1b2735; background: #f4f7fa; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1080px; margin: 24px auto; padding: 0 16px 32px; }
+    h1 { margin-bottom: 6px; }
+    h2 { margin: 0 0 12px; font-size: 1.22rem; }
+    p { line-height: 1.55; }
+    .muted { color: #536273; }
+    .card { background: white; border: 1px solid #dce3e9; border-radius: 10px; padding: 20px; margin: 16px 0; }
+    .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+    label { display: block; font-weight: 600; font-size: .92rem; }
+    label input { margin-top: 5px; }
+    input:not([type="checkbox"]), textarea { width: 100%; border: 1px solid #9aaabc; border-radius: 5px; padding: 8px; font: inherit; }
+    input:focus, textarea:focus { outline: 2px solid #1769aa; }
+    .row > label { flex: 1 1 190px; }
+    button, .file-button { display: inline-block; border: 1px solid #255c87; background: #fff; color: #194d77; border-radius: 5px; padding: 8px 12px; font: inherit; cursor: pointer; }
+    button:hover, .file-button:hover { background: #e8f2f9; }
+    button.primary { background: #1769aa; color: white; }
+    button.primary:hover { background: #115484; }
+    button.remove { color: #a62020; border-color: #cf9a9a; padding: 5px 8px; }
+    .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .file-button input { display: none; }
+    .scroll { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; margin: 8px 0 12px; }
+    th, td { padding: 8px; border-bottom: 1px solid #dce3e9; text-align: left; }
+    th { color: #34475c; white-space: nowrap; font-size: .9rem; }
+    td input { min-width: 105px; }
+    .number { text-align: right; white-space: nowrap; }
+    .error { color: #a62020; background: #fff0f0; border: 1px solid #e3aaaa; padding: 12px; border-radius: 5px; white-space: pre-line; }
+    .overload { background: #fff0ed; color: #8f1d13; font-weight: 700; }
+    .summary { display: flex; gap: 16px; flex-wrap: wrap; padding: 12px; background: #e8f2f9; border-radius: 5px; }
+    .summary span { min-width: 130px; }
+    .check { display: flex; gap: 8px; align-items: flex-start; font-weight: 400; }
+    .check input { margin-top: 5px; }
+    #results[hidden], #error[hidden] { display: none; }
+    body.show-results header .toolbar { display: none; }
+    @media print { .no-print, #input-area { display: none !important; } main { max-width: none; } .card { break-inside: avoid; } }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>🎯 Scrum Capacity Calculator</h1>
-            <p>Calculate team capacity and identify overloaded members</p>
-            <div style="margin-top: 15px;">
-                <a href="/config-editor" class="btn btn-secondary" style="display: inline-block; text-decoration: none;">
-                    ⚙️ Open Config Editor
-                </a>
-            </div>
-        </header>
-
-        <div class="content">
-            <div id="input-form">
-                <div class="section">
-                    <h2 class="section-title">Team Configuration</h2>
-                    <div class="input-group">
-                        <label for="config-json">Team Configuration (JSON)</label>
-                        <textarea id="config-json" rows="15" placeholder="Paste your team configuration JSON here, or upload a file below..."></textarea>
-                        <p class="help-text">Include: sprint dates, team members, locations, and PTO entries</p>
-                    </div>
-                    <div class="file-upload" onclick="document.getElementById('config-file').click()">
-                        <input type="file" id="config-file" accept=".json">
-                        <p>📁 Click to upload configuration file</p>
-                        <p class="help-text">Or drag and drop here</p>
-                    </div>
-                    <div style="margin-top: 10px;">
-                        <button class="btn btn-secondary" onclick="downloadTemplate()">
-                            📥 Download Template
-                        </button>
-                    </div>
-                </div>
-
-                <div class="section">
-                    <h2 class="section-title">Jira Export</h2>
-                    <div class="input-group">
-                        <label for="jira-csv">Jira CSV Export</label>
-                        <textarea id="jira-csv" rows="10" placeholder="Paste Jira CSV export here, or upload a file below..."></textarea>
-                        <p class="help-text">Required columns: Issue Key, Assignee, Sprint, Estimate</p>
-                    </div>
-                    <div class="file-upload" onclick="document.getElementById('jira-file').click()">
-                        <input type="file" id="jira-file" accept=".csv">
-                        <p>📁 Click to upload Jira CSV file</p>
-                    </div>
-                </div>
-
-                <div id="error-container"></div>
-
-                <div class="button-group">
-                    <button class="btn btn-primary" onclick="calculate()">
-                        ✨ Calculate Capacity
-                    </button>
-                    <button class="btn btn-secondary" onclick="clearForm()">
-                        🔄 Clear
-                    </button>
-                </div>
-            </div>
-
-            <div class="loading" id="loading">
-                <div class="spinner"></div>
-                <p>Calculating capacity...</p>
-            </div>
-
-            <div id="results"></div>
-        </div>
+<main>
+  <header class="no-print">
+    <h1>Scrum Team Capacity</h1>
+    <p class="muted">Plan one Sprint using working hours, holidays, PTO, and a Jira CSV export. Calculations run on this computer.</p>
+    <div class="toolbar">
+      <button type="button" id="example">Load example</button>
+      <label class="file-button">Import team configuration JSON<input type="file" id="config-file" accept=".json,application/json"></label>
+      <button type="button" id="save-config">Download team configuration</button>
     </div>
+  </header>
 
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  <div id="input-area">
+    <section class="card">
+      <h2>1. Sprint</h2>
+      <div class="row">
+        <label>Sprint name<input id="sprint-name" placeholder="For example, Sprint 1"></label>
+        <label>Start date<input type="date" id="start-date"></label>
+        <label>End date (inclusive)<input type="date" id="end-date"></label>
+      </div>
+      <p class="muted">Use the two working weeks or the full 14-day span. Working days are calculated from the dates entered.</p>
+    </section>
+
+    <section class="card">
+      <h2>2. Office locations and public holidays</h2>
+      <p class="muted">The country code supplies national holidays. Add any extra local dates, separated by commas. Each date is counted once.</p>
+      <div class="scroll"><table><thead><tr><th>Location</th><th>Country code</th><th>Extra public holidays (YYYY-MM-DD)</th><th></th></tr></thead><tbody id="locations"></tbody></table></div>
+      <button type="button" data-add="locations">Add location</button>
+    </section>
+
+    <section class="card">
+      <h2>3. Team members</h2>
+      <p class="muted">The Jira assignee must match the CSV exactly. Groups can have additional days off.</p>
+      <div class="scroll"><table><thead><tr><th>Name</th><th>Jira assignee</th><th>Group</th><th>Location</th><th>Hours per day</th><th></th></tr></thead><tbody id="members"></tbody></table></div>
+      <button type="button" data-add="members">Add member</button>
+    </section>
+
+    <section class="card">
+      <h2>4. Additional group days off</h2>
+      <p class="muted">These dates apply only to members with the matching group and location. Location holidays still apply. Leave empty if none.</p>
+      <div class="scroll"><table><thead><tr><th>Group</th><th>Location</th><th>Dates (YYYY-MM-DD)</th><th></th></tr></thead><tbody id="group-holidays"></tbody></table></div>
+      <button type="button" data-add="group-holidays">Add group dates</button>
+    </section>
+
+    <section class="card">
+      <h2>5. Personal time off (PTO)</h2>
+      <p class="muted">Enter a member, date, and hours. PTO on weekends or holidays is not deducted again. Multiple entries on one date are capped at that member's daily hours.</p>
+      <div class="scroll"><table><thead><tr><th>Member name</th><th>Date</th><th>Hours</th><th></th></tr></thead><tbody id="ptos"></tbody></table></div>
+      <button type="button" data-add="ptos">Add PTO</button>
+    </section>
+
+    <section class="card">
+      <h2>6. Jira tasks</h2>
+      <label>Import Jira CSV file<input type="file" id="jira-file" accept=".csv,text/csv"></label>
+      <p class="muted">Required columns: Issue Key, Assignee, Sprint, Estimate. Summary is optional. Sprint values must match the name above.</p>
+      <details><summary>Or paste CSV content</summary><textarea id="jira-csv" rows="5" placeholder="Issue Key,Summary,Assignee,Sprint,Estimate"></textarea></details>
+      <p><label class="check"><input type="checkbox" id="hours-confirm">I confirm that CSV Estimate values are in <strong>hours</strong> (Story Points or seconds cannot be compared directly).</label></p>
+    </section>
+    <div id="error" class="error" role="alert" hidden></div>
+    <button type="button" id="calculate" class="primary">Calculate capacity</button>
+  </div>
+
+  <section id="results" class="card" hidden aria-live="polite"></section>
+</main>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

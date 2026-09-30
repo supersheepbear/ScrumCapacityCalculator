@@ -100,26 +100,10 @@ PROJ-2,Task 2,jane.smith,Sprint-1,24"""
 
         assert len(errors) == 0
 
-    def test_column_mapping(self):
-        """Test custom column mapping."""
-        parser = JiraParser(column_mapping={"Story Points": "Estimate"})
+    def test_duplicate_issue_in_same_sprint_is_rejected(self, parser):
+        csv_content = """Issue Key,Assignee,Sprint,Estimate
+PROJ-1,john.doe,Sprint-1,8
+PROJ-1,john.doe,Sprint-1,8"""
 
-        csv_content = """Issue Key,Summary,Assignee,Sprint,Story Points
-PROJ-1,Task 1,john.doe,Sprint-1,5"""
-
-        tasks = parser.parse_csv(csv_content)
-
-        assert len(tasks) == 1
-        assert tasks[0].estimate == 5.0
-
-    def test_get_column_suggestions(self, parser):
-        """Test column name suggestions."""
-        csv_content = """Key,Title,Owner,Iteration,Story Points
-PROJ-1,Task 1,john.doe,Sprint-1,5"""
-
-        suggestions = parser.get_column_suggestions(csv_content)
-
-        assert "Issue Key" in suggestions
-        assert "Key" in suggestions["Issue Key"]
-        assert "Assignee" in suggestions
-        assert "Owner" in suggestions["Assignee"]
+        with pytest.raises(ValueError, match="Duplicate issue"):
+            parser.parse_csv(csv_content)

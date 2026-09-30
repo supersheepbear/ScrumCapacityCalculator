@@ -29,7 +29,8 @@ class CapacityCalculator:
         member: TeamMember,
         sprint: Sprint,
         location: Location,
-        ptos: List[PTOEntry]
+        ptos: List[PTOEntry],
+        extra_holidays: Set[date] = None
     ) -> float:
         """
         Calculate available capacity for a team member.
@@ -59,33 +60,23 @@ class CapacityCalculator:
             h for h in all_holidays
             if sprint.start_date <= h <= sprint.end_date
         }
+        sprint_holidays.update(extra_holidays or set())
 
-        # Get member's PTO dates and hours
-        member_ptos = [p for p in ptos if p.name == member.name]
-        pto_dates = set()
-        partial_pto_hours = 0.0
+        # PTO is deducted only on working dates, once per date, capped at a day's hours.
+        pto_by_date = defaultdict(float)
+        for pto in ptos:
+            if pto.name == member.name and sprint.start_date <= pto.date <= sprint.end_date:
+                pto_by_date[pto.date] += pto.hours
 
-        for pto in member_ptos:
-            if sprint.start_date <= pto.date <= sprint.end_date:
-                if pto.hours >= member.daily_hours:
-                    # Full day PTO
-                    pto_dates.add(pto.date)
-                else:
-                    # Partial day PTO - handle separately
-                    partial_pto_hours += pto.hours
-
-        # Calculate working days
         working_days = self.calendar_service.get_working_days(
-            sprint.start_date,
-            sprint.end_date,
-            sprint_holidays,
-            pto_dates
+            sprint.start_date, sprint.end_date, sprint_holidays
         )
-
-        # Convert to hours and subtract partial PTO
-        capacity_hours = (working_days * member.daily_hours) - partial_pto_hours
-
-        return max(0, capacity_hours)  # Never negative
+        deducted_hours = sum(
+            min(hours, member.daily_hours)
+            for day, hours in pto_by_date.items()
+            if day.weekday() not in self.calendar_service.weekends and day not in sprint_holidays
+        )
+        return working_days * member.daily_hours - deducted_hours
 
     def calculate_planned_work(
         self,
@@ -120,7 +111,8 @@ class CapacityCalculator:
         sprint: Sprint,
         locations: List[Location],
         ptos: List[PTOEntry],
-        tasks: List[JiraTask]
+        tasks: List[JiraTask],
+        group_holidays: Dict[tuple, Set[date]] = None
     ) -> List[CapacityResult]:
         """
         Calculate capacity results for all team members.
@@ -144,10 +136,11 @@ class CapacityCalculator:
             if not location:
                 raise ValueError(f"Location '{member.location}' not found for member '{member.name}'")
 
-            capacity = self.calculate_member_capacity(member, sprint, location, ptos)
+            extra_holidays = (group_holidays or {}).get((member.group, member.location), set())
+            capacity = self.calculate_member_capacity(member, sprint, location, ptos, extra_holidays)
             planned = self.calculate_planned_work(member, sprint, tasks)
             remaining = capacity - planned
-            load_rate = planned / capacity if capacity > 0 else 0
+            load_rate = planned / capacity if capacity > 0 else None
 
             result = CapacityResult(
                 member_name=member.name,
@@ -160,7 +153,7 @@ class CapacityCalculator:
             results.append(result)
 
         # Sort by load rate descending (overloaded first)
-        results.sort(key=lambda r: r.load_rate, reverse=True)
+        results.sort(key=lambda r: (r.status == "overload", r.load_rate or 0), reverse=True)
 
         return results
 

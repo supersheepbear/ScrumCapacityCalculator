@@ -1,400 +1,296 @@
-// Main JavaScript for Scrum Capacity Calculator
+const fields = {
+  locations: [
+    ["name", "text", "Beijing"],
+    ["country_code", "text", "CN"],
+    ["manual_holidays", "text", "2026-10-02, 2026-10-03"]
+  ],
+  members: [
+    ["name", "text", "Alice"],
+    ["jira_name", "text", "alice"],
+    ["group", "text", "Engineering"],
+    ["location", "text", "Beijing"],
+    ["daily_hours", "number", "8"]
+  ],
+  "group-holidays": [
+    ["group", "text", "Engineering"],
+    ["location", "text", "Beijing"],
+    ["dates", "text", "2026-10-08, 2026-10-09"]
+  ],
+  ptos: [
+    ["name", "text", "Alice"],
+    ["date", "date", ""],
+    ["hours", "number", "8"]
+  ]
+};
 
-// Check if config was generated from editor
-window.addEventListener('DOMContentLoaded', function() {
-    const storedConfig = localStorage.getItem('teamConfig');
-    if (storedConfig) {
-        document.getElementById('config-json').value = storedConfig;
-        localStorage.removeItem('teamConfig');
-        showSuccess('Configuration loaded from editor');
+function addRow(section, data = {}) {
+  const row = document.createElement("tr");
+  for (const [name, type, placeholder] of fields[section]) {
+    const cell = document.createElement("td");
+    const input = document.createElement("input");
+    input.type = type;
+    input.dataset.field = name;
+    input.placeholder = placeholder;
+    input.setAttribute("aria-label", name);
+    if (type === "number") {
+      input.min = "0.1";
+      input.step = "0.1";
     }
-});
-
-// File upload handlers
-document.getElementById('config-file').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            document.getElementById('config-json').value = event.target.result;
-            showSuccess('Configuration file loaded successfully');
-        };
-        reader.readAsText(file);
-    }
-});
-
-document.getElementById('jira-file').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const reader = new FileReader();
-        reader.onload = function(event) {
-            document.getElementById('jira-csv').value = event.target.result;
-            showSuccess('Jira CSV file loaded successfully');
-        };
-        reader.readAsText(file);
-    }
-});
-
-// Calculate capacity
-async function calculate() {
-    const configJson = document.getElementById('config-json').value.trim();
-    const jiraCsv = document.getElementById('jira-csv').value.trim();
-
-    // Clear previous errors
-    clearErrors();
-
-    // Validate inputs
-    if (!configJson) {
-        showError('Please provide team configuration');
-        return;
-    }
-
-    if (!jiraCsv) {
-        showError('Please provide Jira CSV export');
-        return;
-    }
-
-    // Show loading
-    document.getElementById('input-form').style.display = 'none';
-    document.getElementById('loading').classList.add('active');
-
-    try {
-        const response = await fetch('/calculate', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: new URLSearchParams({
-                config_json: configJson,
-                jira_csv: jiraCsv
-            })
-        });
-
-        const data = await response.json();
-
-        // Hide loading
-        document.getElementById('loading').classList.remove('active');
-
-        if (data.success) {
-            displayResults(data);
-        } else {
-            // Show errors
-            document.getElementById('input-form').style.display = 'block';
-            showError(data.error, data.details);
-        }
-    } catch (error) {
-        document.getElementById('loading').classList.remove('active');
-        document.getElementById('input-form').style.display = 'block';
-        showError('Failed to calculate capacity', [error.message]);
-    }
+    const value = data[name] ?? (
+      section === "members" && name === "group" ? "Team" :
+      name === "daily_hours" || name === "hours" ? 8 : ""
+    );
+    input.value = Array.isArray(value) ? value.join(", ") : (value ?? "");
+    cell.append(input);
+    row.append(cell);
+  }
+  const action = document.createElement("td");
+  const remove = document.createElement("button");
+  remove.type = "button";
+  remove.className = "remove";
+  remove.textContent = "Remove";
+  remove.addEventListener("click", () => row.remove());
+  action.append(remove);
+  row.append(action);
+  document.getElementById(section).append(row);
 }
 
-// Display results
-function displayResults(data) {
-    const resultsDiv = document.getElementById('results');
-
-    let html = `
-        <div class="section">
-            <h2 class="section-title">Sprint: ${data.sprint.name}</h2>
-            <p style="color: #666; margin-bottom: 20px;">
-                ${data.sprint.start_date} to ${data.sprint.end_date}
-                (${data.sprint.duration_days} calendar days)
-            </p>
-
-            <!-- Team Summary -->
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        color: white; padding: 25px; border-radius: 8px; margin-bottom: 30px;">
-                <h3 style="margin-bottom: 15px; font-size: 1.3em;">Team Capacity Summary</h3>
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <div>
-                        <div style="opacity: 0.8; font-size: 0.9em;">Total Capacity</div>
-                        <div style="font-size: 1.5em; font-weight: bold;">
-                            ${formatHours(data.summary.total_capacity)}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="opacity: 0.8; font-size: 0.9em;">Total Planned</div>
-                        <div style="font-size: 1.5em; font-weight: bold;">
-                            ${formatHours(data.summary.total_planned)}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="opacity: 0.8; font-size: 0.9em;">Remaining</div>
-                        <div style="font-size: 1.5em; font-weight: bold;">
-                            ${formatHours(data.summary.total_remaining)}
-                        </div>
-                    </div>
-                    <div>
-                        <div style="opacity: 0.8; font-size: 0.9em;">Average Load</div>
-                        <div style="font-size: 1.5em; font-weight: bold;">
-                            ${(data.summary.average_load_rate * 100).toFixed(1)}%
-                        </div>
-                    </div>
-                    <div>
-                        <div style="opacity: 0.8; font-size: 0.9em;">Overloaded</div>
-                        <div style="font-size: 1.5em; font-weight: bold;">
-                            ${data.summary.overloaded_count} / ${data.summary.total_members}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Individual Results Table -->
-            <h3 style="margin-bottom: 15px; font-size: 1.2em; color: #333;">Individual Capacity</h3>
-            <div style="overflow-x: auto;">
-                <table style="width: 100%; border-collapse: collapse; background: white;
-                              box-shadow: 0 2px 8px rgba(0,0,0,0.1); border-radius: 8px; overflow: hidden;">
-                    <thead>
-                        <tr style="background: #f8f9fa;">
-                            <th style="padding: 15px; text-align: left; font-weight: 600; color: #555;">Member</th>
-                            <th style="padding: 15px; text-align: left; font-weight: 600; color: #555;">Location</th>
-                            <th style="padding: 15px; text-align: right; font-weight: 600; color: #555;">Capacity</th>
-                            <th style="padding: 15px; text-align: right; font-weight: 600; color: #555;">Planned</th>
-                            <th style="padding: 15px; text-align: right; font-weight: 600; color: #555;">Remaining</th>
-                            <th style="padding: 15px; text-align: right; font-weight: 600; color: #555;">Load Rate</th>
-                            <th style="padding: 15px; text-align: center; font-weight: 600; color: #555;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-    `;
-
-    data.results.forEach((result, index) => {
-        const rowBg = index % 2 === 0 ? 'white' : '#f8f9fa';
-        const statusColor = getStatusColor(result.status);
-
-        html += `
-            <tr style="background: ${rowBg}; border-top: 1px solid #e0e0e0;">
-                <td style="padding: 15px; font-weight: 500;">${result.member_name}</td>
-                <td style="padding: 15px; color: #666;">${result.location}</td>
-                <td style="padding: 15px; text-align: right; font-family: monospace;">
-                    ${formatHours(result.capacity_hours)}
-                </td>
-                <td style="padding: 15px; text-align: right; font-family: monospace;">
-                    ${formatHours(result.planned_hours)}
-                </td>
-                <td style="padding: 15px; text-align: right; font-family: monospace;
-                           color: ${result.remaining_hours < 0 ? '#c33' : '#3c3'};">
-                    ${formatHours(result.remaining_hours)}
-                </td>
-                <td style="padding: 15px; text-align: right; font-weight: 600; color: ${statusColor};">
-                    ${(result.load_rate * 100).toFixed(1)}%
-                </td>
-                <td style="padding: 15px; text-align: center; font-size: 1.5em;">
-                    ${result.status_icon}
-                </td>
-            </tr>
-        `;
-    });
-
-    html += `
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    `;
-
-    // Add warnings section
-    if (hasWarnings(data.warnings)) {
-        html += generateWarningsSection(data.warnings);
-    }
-
-    // Add config warnings if any
-    if (data.config_warnings && data.config_warnings.length > 0) {
-        html += `
-            <div class="alert" style="background: #fff3cd; border: 1px solid #ffc107; color: #856404; margin-top: 20px;">
-                <strong>⚠️ Configuration Warnings:</strong>
-                <ul style="margin: 10px 0 0 20px;">
-                    ${data.config_warnings.map(w => `<li>${w}</li>`).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    // Add action buttons
-    html += `
-        <div class="button-group" style="margin-top: 30px;">
-            <button class="btn btn-primary" onclick="saveReport()">
-                💾 Save Report
-            </button>
-            <button class="btn btn-secondary" onclick="startOver()">
-                ← Back to Input
-            </button>
-        </div>
-    `;
-
-    resultsDiv.innerHTML = html;
-    resultsDiv.style.display = 'block';
+function rows(section) {
+  return Array.from(document.querySelectorAll("#" + section + " tr")).map(row => {
+    const data = {};
+    row.querySelectorAll("input").forEach(input => { data[input.dataset.field] = input.value.trim(); });
+    if (section === "locations") data.manual_holidays = dates(data.manual_holidays);
+    if (section === "group-holidays") data.dates = dates(data.dates);
+    if (section === "members") data.daily_hours = Number(data.daily_hours);
+    if (section === "ptos") data.hours = Number(data.hours);
+    return data;
+  });
 }
 
-// Helper functions
-function formatHours(hours) {
-    const days = (hours / 8).toFixed(1);
-    return `${hours.toFixed(1)}h (${days}d)`;
+function dates(value) {
+  return value.split(",").map(date => date.trim()).filter(Boolean);
 }
 
-function getStatusColor(status) {
-    const colors = {
-        'overload': '#dc3545',
-        'warning': '#ffc107',
-        'normal': '#28a745'
-    };
-    return colors[status] || '#666';
+function config() {
+  return {
+    sprint: {
+      sprint_name: document.getElementById("sprint-name").value.trim(),
+      start_date: document.getElementById("start-date").value,
+      end_date: document.getElementById("end-date").value
+    },
+    locations: rows("locations"),
+    team_members: rows("members"),
+    group_holidays: rows("group-holidays"),
+    ptos: rows("ptos")
+  };
 }
 
-function hasWarnings(warnings) {
-    return warnings.unassigned_tasks.length > 0 ||
-           warnings.unestimated_tasks.length > 0 ||
-           warnings.unmatched_assignees.length > 0;
+function loadConfig(data) {
+  document.getElementById("sprint-name").value = data.sprint?.sprint_name || "";
+  document.getElementById("start-date").value = data.sprint?.start_date || "";
+  document.getElementById("end-date").value = data.sprint?.end_date || "";
+  const sections = {
+    locations: data.locations || [],
+    members: data.team_members || [],
+    "group-holidays": data.group_holidays || [],
+    ptos: data.ptos || []
+  };
+  for (const [section, items] of Object.entries(sections)) {
+    document.getElementById(section).replaceChildren();
+    items.forEach(item => addRow(section, item));
+  }
+  hideError();
 }
 
-function generateWarningsSection(warnings) {
-    let html = '<div class="section"><h3 style="color: #856404; margin-bottom: 15px;">⚠️ Warnings</h3>';
-
-    if (warnings.unassigned_tasks.length > 0) {
-        html += `
-            <div class="alert" style="background: #fff3cd; border: 1px solid #ffc107; margin-bottom: 15px;">
-                <strong>Unassigned Tasks (${warnings.unassigned_tasks.length}):</strong>
-                <ul style="margin: 10px 0 0 20px;">
-                    ${warnings.unassigned_tasks.map(t =>
-                        `<li>${t.issue_key}: ${t.summary} (${t.estimate}h)</li>`
-                    ).join('')}
-                </ul>
-                <p style="margin-top: 10px; font-style: italic;">
-                    Total unassigned: ${warnings.unassigned_tasks.reduce((sum, t) => sum + t.estimate, 0)}h
-                </p>
-            </div>
-        `;
-    }
-
-    if (warnings.unestimated_tasks.length > 0) {
-        html += `
-            <div class="alert" style="background: #fff3cd; border: 1px solid #ffc107; margin-bottom: 15px;">
-                <strong>Unestimated Tasks (${warnings.unestimated_tasks.length}):</strong>
-                <ul style="margin: 10px 0 0 20px;">
-                    ${warnings.unestimated_tasks.map(t =>
-                        `<li>${t.issue_key}: ${t.summary} (Assignee: ${t.assignee})</li>`
-                    ).join('')}
-                </ul>
-            </div>
-        `;
-    }
-
-    if (warnings.unmatched_assignees.length > 0) {
-        html += `
-            <div class="alert" style="background: #fff3cd; border: 1px solid #ffc107;">
-                <strong>Unmatched Assignees (${warnings.unmatched_assignees.length}):</strong>
-                <ul style="margin: 10px 0 0 20px;">
-                    ${warnings.unmatched_assignees.map(a =>
-                        `<li>${a.assignee} (${a.total_hours}h planned work)</li>`
-                    ).join('')}
-                </ul>
-                <p style="margin-top: 10px; font-style: italic;">
-                    These assignees don't match any team member in the configuration.
-                </p>
-            </div>
-        `;
-    }
-
-    html += '</div>';
-    return html;
+function download(name, content, type) {
+  const link = document.createElement("a");
+  const url = URL.createObjectURL(new Blob([content], {type}));
+  link.href = url;
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function showError(message, details = []) {
-    const errorContainer = document.getElementById('error-container');
-    let html = `
-        <div class="alert alert-error">
-            <strong>❌ ${message}</strong>
-    `;
+  const box = document.getElementById("error");
+  box.textContent = [message, ...details].filter(Boolean).join("\n");
+  box.hidden = false;
+  box.scrollIntoView({behavior: "smooth", block: "center"});
+}
 
-    if (details && details.length > 0) {
-        html += '<ul style="margin: 10px 0 0 20px;">';
-        details.forEach(detail => {
-            html += `<li>${detail}</li>`;
-        });
-        html += '</ul>';
+function hideError() {
+  const box = document.getElementById("error");
+  box.hidden = true;
+  box.textContent = "";
+}
+
+function hours(value) {
+  return Number(value).toFixed(1) + " h";
+}
+
+function cell(row, value, className = "") {
+  const td = document.createElement("td");
+  td.textContent = value;
+  td.className = className;
+  row.append(td);
+}
+
+function renderResults(data) {
+  const target = document.getElementById("results");
+  target.replaceChildren();
+  const title = document.createElement("h2");
+  title.textContent = data.sprint.name + ": " + data.sprint.start_date + " to " + data.sprint.end_date;
+  target.append(title);
+  const summary = document.createElement("div");
+  summary.className = "summary";
+  const totals = [
+    ["Team capacity", hours(data.summary.total_capacity)],
+    ["Planned", hours(data.summary.total_planned)],
+    ["Remaining", hours(data.summary.total_remaining)],
+    ["Team load", data.summary.total_capacity ? (data.summary.average_load_rate * 100).toFixed(1) + "%" : "N/A"],
+    ["Overloaded", data.summary.overloaded_count + " / " + data.summary.total_members]
+  ];
+  for (const [label, value] of totals) {
+    const span = document.createElement("span");
+    const strong = document.createElement("strong");
+    strong.textContent = value;
+    span.append(label + ": ", document.createElement("br"), strong);
+    summary.append(span);
+  }
+  target.append(summary);
+  const scroll = document.createElement("div");
+  scroll.className = "scroll";
+  const table = document.createElement("table");
+  const head = document.createElement("thead");
+  const header = document.createElement("tr");
+  ["Member", "Location", "Capacity", "Planned", "Remaining / overload", "Load rate", "Status"].forEach(label => cell(header, label));
+  head.append(header);
+  table.append(head);
+  const body = document.createElement("tbody");
+  for (const result of data.results) {
+    const row = document.createElement("tr");
+    if (result.status === "overload") row.className = "overload";
+    cell(row, result.member_name);
+    cell(row, result.location);
+    cell(row, hours(result.capacity_hours), "number");
+    cell(row, hours(result.planned_hours), "number");
+    cell(row, hours(result.remaining_hours), "number");
+    cell(row, result.load_rate === null ? "N/A" : (result.load_rate * 100).toFixed(1) + "%", "number");
+    cell(row, result.status === "overload" ? "Overloaded" : result.status === "warning" ? "Near capacity" : "Available");
+    body.append(row);
+  }
+  table.append(body);
+  scroll.append(table);
+  target.append(scroll);
+  const warnings = data.warnings;
+  const notes = [
+    ["Unassigned tasks", warnings.unassigned_tasks.map(task => task.issue_key)],
+    ["Unestimated tasks", warnings.unestimated_tasks.map(task => task.issue_key)],
+    ["Unmatched assignees", warnings.unmatched_assignees.map(item => item.assignee + " (" + hours(item.total_hours) + ")")]
+  ];
+  for (const [label, items] of notes) {
+    if (!items.length) continue;
+    const note = document.createElement("p");
+    note.textContent = label + ": " + items.join(", ");
+    target.append(note);
+  }
+  for (const warning of data.config_warnings || []) {
+    const note = document.createElement("p");
+    note.textContent = warning;
+    target.append(note);
+  }
+  const actions = document.createElement("div");
+  actions.className = "toolbar no-print";
+  const back = document.createElement("button");
+  back.textContent = "Edit inputs";
+  back.onclick = () => {
+    document.getElementById("input-area").hidden = false;
+    target.hidden = true;
+    document.body.classList.remove("show-results");
+  };
+  const print = document.createElement("button");
+  print.textContent = "Print / Save PDF";
+  print.onclick = () => window.print();
+  actions.append(back, print);
+  target.append(actions);
+  document.getElementById("input-area").hidden = true;
+  target.hidden = false;
+  document.body.classList.add("show-results");
+  target.scrollIntoView({behavior: "smooth"});
+}
+
+async function calculate() {
+  hideError();
+  if (!document.getElementById("hours-confirm").checked) {
+    showError("Confirm that Jira Estimate values are in hours.");
+    return;
+  }
+  const csv = document.getElementById("jira-csv").value.trim();
+  if (!csv) {
+    showError("Import or paste a Jira CSV.");
+    return;
+  }
+  const button = document.getElementById("calculate");
+  button.disabled = true;
+  button.textContent = "Calculating...";
+  try {
+    const response = await fetch("/calculate", {
+      method: "POST",
+      headers: {"Content-Type": "application/x-www-form-urlencoded"},
+      body: new URLSearchParams({
+        config_json: JSON.stringify(config()),
+        jira_csv: csv,
+        estimate_unit: "hours"
+      })
+    });
+    const data = await response.json();
+    if (!response.ok || !data.success) {
+      showError(data.error || "Calculation failed", data.details || []);
+      return;
     }
-
-    html += '</div>';
-    errorContainer.innerHTML = html;
+    renderResults(data);
+  } catch (error) {
+    showError("Could not connect to the local service: " + error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = "Calculate capacity";
+  }
 }
 
-function showSuccess(message) {
-    const errorContainer = document.getElementById('error-container');
-    errorContainer.innerHTML = `
-        <div class="alert alert-success">
-            <strong>✅ ${message}</strong>
-        </div>
-    `;
-    setTimeout(() => {
-        errorContainer.innerHTML = '';
-    }, 3000);
-}
-
-function clearErrors() {
-    document.getElementById('error-container').innerHTML = '';
-}
-
-function clearForm() {
-    document.getElementById('config-json').value = '';
-    document.getElementById('jira-csv').value = '';
-    document.getElementById('config-file').value = '';
-    document.getElementById('jira-file').value = '';
-    clearErrors();
-}
-
-function startOver() {
-    document.getElementById('results').style.display = 'none';
-    document.getElementById('input-form').style.display = 'block';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function saveReport() {
-    const resultsHtml = document.getElementById('results').innerHTML;
-    const fullHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Capacity Report</title>
-    <style>
-        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
-        .section { margin-bottom: 30px; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: left; border: 1px solid #ddd; }
-        th { background: #f8f9fa; font-weight: bold; }
-        .alert { padding: 15px; margin: 10px 0; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <h1>Scrum Capacity Report</h1>
-    <p>Generated: ${new Date().toLocaleString()}</p>
-    ${resultsHtml}
-</body>
-</html>
-    `;
-
-    const blob = new Blob([fullHtml], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `capacity_report_${new Date().toISOString().split('T')[0]}.html`;
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-async function downloadTemplate() {
-    try {
-        const response = await fetch('/download-template');
-        const content = await response.text();
-
-        const blob = new Blob([content], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'team_config_template.json';
-        a.click();
-        URL.revokeObjectURL(url);
-    } catch (error) {
-        showError('Failed to download template', [error.message]);
-    }
-}
+document.querySelectorAll("[data-add]").forEach(button => {
+  button.addEventListener("click", () => addRow(button.dataset.add));
+});
+document.getElementById("calculate").addEventListener("click", calculate);
+document.getElementById("save-config").addEventListener("click", () => {
+  download("team_config.json", JSON.stringify(config(), null, 2), "application/json");
+});
+document.getElementById("config-file").addEventListener("change", async event => {
+  const file = event.target.files[0];
+  if (!file) return;
+  try { loadConfig(JSON.parse(await file.text())); }
+  catch (error) { showError("The configuration file is not valid JSON: " + error.message); }
+  event.target.value = "";
+});
+document.getElementById("jira-file").addEventListener("change", async event => {
+  const file = event.target.files[0];
+  if (file) document.getElementById("jira-csv").value = await file.text();
+});
+document.getElementById("example").addEventListener("click", () => {
+  loadConfig({
+    sprint: {sprint_name: "Sprint 1", start_date: "2024-01-08", end_date: "2024-01-19"},
+    locations: [{name: "Beijing", country_code: "CN", manual_holidays: []}],
+    team_members: [
+      {name: "Alice", jira_name: "alice", group: "Engineering", location: "Beijing", daily_hours: 8},
+      {name: "Bob", jira_name: "bob", group: "QA", location: "Beijing", daily_hours: 6}
+    ],
+    group_holidays: [{group: "QA", location: "Beijing", dates: ["2024-01-18"]}],
+    ptos: [{name: "Alice", date: "2024-01-10", hours: 4}]
+  });
+  document.getElementById("jira-csv").value =
+    "Issue Key,Summary,Assignee,Sprint,Estimate\n" +
+    "DEMO-1,Build feature,alice,Sprint 1,80\n" +
+    "DEMO-2,Test feature,bob,Sprint 1,24\n";
+  document.getElementById("hours-confirm").checked = true;
+});
+addRow("locations");
+addRow("members");

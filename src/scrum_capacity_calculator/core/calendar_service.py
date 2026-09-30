@@ -92,22 +92,3 @@ class CalendarService:
             holiday_set.update(manual_holidays)
 
         return holiday_set
-
-    def calculate_pto_days(
-        self,
-        pto_hours: float,
-        daily_hours: float
-    ) -> float:
-        """
-        Convert PTO hours to day equivalent.
-
-        Args:
-            pto_hours: Hours of PTO
-            daily_hours: Member's daily work hours
-
-        Returns:
-            PTO in days
-        """
-        if daily_hours <= 0:
-            raise ValueError("daily_hours must be positive")
-        return pto_hours / daily_hours

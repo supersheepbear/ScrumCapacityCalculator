@@ -81,32 +81,6 @@ class TestCalendarService:
 
         assert working_days == 10  # No change
 
-    def test_calculate_pto_days(self):
-        """Test PTO hours to days conversion."""
-        service = CalendarService()
-
-        # 8 hours PTO for 8-hour day worker
-        days = service.calculate_pto_days(8, 8)
-        assert days == 1.0
-
-        # 4 hours PTO for 8-hour day worker
-        days = service.calculate_pto_days(4, 8)
-        assert days == 0.5
-
-        # 6 hours PTO for 6-hour day worker
-        days = service.calculate_pto_days(6, 6)
-        assert days == 1.0
-
-    def test_calculate_pto_days_invalid(self):
-        """Test PTO calculation with invalid input."""
-        service = CalendarService()
-
-        with pytest.raises(ValueError):
-            service.calculate_pto_days(8, 0)
-
-        with pytest.raises(ValueError):
-            service.calculate_pto_days(8, -1)
-
     def test_get_holidays_for_location_china(self):
         """Test getting holidays for China."""
         service = CalendarService()

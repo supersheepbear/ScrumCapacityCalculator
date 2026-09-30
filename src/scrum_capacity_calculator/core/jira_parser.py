@@ -1,160 +1,65 @@
-"""Jira CSV parser."""
+"""Read Jira tasks from a CSV whose Estimate column is in hours."""
 
-import pandas as pd
-from typing import List, Dict, Optional
+import csv
 from io import StringIO
+from typing import List
+
 from scrum_capacity_calculator.models import JiraTask
 
 
 class JiraParser:
-    """Parses Jira CSV exports into task objects."""
-
-    REQUIRED_COLUMNS = ["Issue Key", "Assignee", "Sprint", "Estimate"]
-
-    def __init__(self, column_mapping: Dict[str, str] = None):
-        """
-        Initialize parser.
-
-        Args:
-            column_mapping: Optional mapping of CSV column names to standard names.
-                          E.g., {"Story Points": "Estimate"}
-        """
-        self.column_mapping = column_mapping or {}
+    REQUIRED_COLUMNS = {"Issue Key", "Assignee", "Sprint", "Estimate"}
 
     def parse_csv(self, csv_content: str) -> List[JiraTask]:
-        """
-        Parse Jira CSV content into tasks.
-
-        Args:
-            csv_content: CSV file content as string
-
-        Returns:
-            List of JiraTask objects
-
-        Raises:
-            ValueError: If required columns are missing or data is invalid
-        """
-        # Read CSV
         try:
-            df = pd.read_csv(StringIO(csv_content))
-        except Exception as e:
-            raise ValueError(f"Failed to parse CSV: {str(e)}")
-
-        # Apply column mapping
-        df = df.rename(columns=self.column_mapping)
-
-        # Validate required columns
-        missing_columns = set(self.REQUIRED_COLUMNS) - set(df.columns)
-        if missing_columns:
-            raise ValueError(
-                f"Missing required columns: {', '.join(missing_columns)}. "
-                f"Available columns: {', '.join(df.columns)}"
-            )
-
-        # Parse tasks
-        tasks = []
-        for idx, row in df.iterrows():
-            try:
-                task = self._parse_row(row)
-                tasks.append(task)
-            except Exception as e:
-                raise ValueError(f"Error parsing row {idx + 2}: {str(e)}")
-
-        return tasks
-
-    def _parse_row(self, row: pd.Series) -> JiraTask:
-        """Parse a single CSV row into a JiraTask."""
-        issue_key = str(row["Issue Key"]).strip()
-
-        # Handle missing or empty assignee
-        assignee = row["Assignee"]
-        if pd.isna(assignee) or str(assignee).strip() == "":
-            assignee = None
-        else:
-            assignee = str(assignee).strip()
-
-        sprint = str(row["Sprint"]).strip()
-
-        # Handle estimate
-        estimate = row["Estimate"]
-        if pd.isna(estimate):
-            estimate = 0.0
-        else:
-            try:
-                estimate = float(estimate)
-            except (ValueError, TypeError):
+            reader = csv.DictReader(StringIO(csv_content.lstrip("\ufeff")))
+            columns = reader.fieldnames or []
+            mapped = [column.strip() for column in columns]
+            missing = self.REQUIRED_COLUMNS - set(mapped)
+            if missing:
                 raise ValueError(
-                    f"Invalid estimate value '{estimate}' for {issue_key}"
+                    f"Missing required columns: {', '.join(sorted(missing))}. "
+                    f"Available columns: {', '.join(columns)}"
                 )
+            if len(mapped) != len(set(mapped)):
+                raise ValueError("CSV has duplicate column names")
 
-        # Get summary if available
-        summary = ""
-        if "Summary" in row.index:
-            summary = str(row["Summary"]) if not pd.isna(row["Summary"]) else ""
-
-        return JiraTask(
-            issue_key=issue_key,
-            summary=summary,
-            assignee=assignee,
-            sprint=sprint,
-            estimate=estimate
-        )
+            tasks = []
+            seen = set()
+            for row_number, raw_row in enumerate(reader, start=2):
+                if None in raw_row:
+                    raise ValueError(f"Row {row_number} has more values than headers")
+                row = dict(zip(mapped, (raw_row[column] for column in columns)))
+                key = (row["Issue Key"] or "").strip()
+                if not key:
+                    raise ValueError(f"Row {row_number}: Issue Key is required")
+                raw_estimate = (row["Estimate"] or "").strip()
+                try:
+                    estimate = float(raw_estimate) if raw_estimate else 0.0
+                    task = JiraTask(
+                        issue_key=key,
+                        summary=(row.get("Summary") or "").strip(),
+                        assignee=(row["Assignee"] or "").strip() or None,
+                        sprint=(row["Sprint"] or "").strip(),
+                        estimate=estimate,
+                    )
+                except (TypeError, ValueError) as error:
+                    raise ValueError(
+                        f"Error parsing row {row_number}: Invalid estimate value "
+                        f"'{raw_estimate}' for {key}: {error}"
+                    ) from error
+                identity = (task.issue_key, task.sprint)
+                if identity in seen:
+                    raise ValueError(f"Row {row_number}: Duplicate issue {task.issue_key} in Sprint '{task.sprint}'")
+                seen.add(identity)
+                tasks.append(task)
+            return tasks
+        except csv.Error as error:
+            raise ValueError(f"Failed to parse CSV: {error}") from error
 
     def validate_single_assignee(self, tasks: List[JiraTask]) -> List[str]:
-        """
-        Check for tasks with multiple assignees (not supported).
-
-        Args:
-            tasks: List of tasks to check
-
-        Returns:
-            List of error messages for tasks with issues
-        """
-        errors = []
-
-        # Check for comma-separated assignees (common multi-assignee format)
-        for task in tasks:
-            if task.assignee and "," in task.assignee:
-                errors.append(
-                    f"{task.issue_key}: Multiple assignees detected ('{task.assignee}'). "
-                    f"Please split the task or assign to a single person."
-                )
-
-        return errors
-
-    def get_column_suggestions(self, csv_content: str) -> Dict[str, List[str]]:
-        """
-        Suggest column mappings based on common patterns.
-
-        Args:
-            csv_content: CSV file content
-
-        Returns:
-            Dict of {standard_name: [possible_column_names]}
-        """
-        try:
-            df = pd.read_csv(StringIO(csv_content))
-        except Exception:
-            return {}
-
-        suggestions = {}
-        columns = df.columns.tolist()
-
-        # Common patterns for each required field
-        patterns = {
-            "Issue Key": ["key", "issue", "ticket", "id"],
-            "Assignee": ["assignee", "assigned", "owner", "responsible"],
-            "Sprint": ["sprint", "iteration"],
-            "Estimate": ["estimate", "story points", "points", "hours", "effort"],
-        }
-
-        for standard_name, keywords in patterns.items():
-            matches = []
-            for col in columns:
-                col_lower = col.lower()
-                if any(keyword in col_lower for keyword in keywords):
-                    matches.append(col)
-            if matches:
-                suggestions[standard_name] = matches
-
-        return suggestions
+        return [
+            f"{task.issue_key}: Multiple assignees detected ('{task.assignee}')."
+            for task in tasks
+            if task.assignee and "," in task.assignee
+        ]
