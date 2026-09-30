@@ -49,6 +49,17 @@ TASK-1,Build feature,alice,Sprint 1,16
 
 `Summary` is optional. The importer also recognizes common alternatives such as `Key`, `Owner`, `Iteration`, and `Estimate (hours)`. Jira files may use comma, semicolon, or tab delimiters. `Sprint` must match the name on the page. Estimates must be numeric hours; Story Points cannot be compared directly with hours, and values in seconds must be converted before import. Unassigned tasks, unestimated tasks, and unmatched assignees appear below the results.
 
+## Excel workbook
+
+Managers who prefer Excel can use the [Scrum Team Capacity workbook](outputs/excel-capacity-20260929-01/Scrum_Team_Capacity.xlsx). It is a macro-free template for one two-week Sprint, with space for 25 team members and 2,000 Jira issues. Enter data in the yellow cells; gray cells contain checks or calculations.
+
+1. In **Team Setup**, enter the Sprint name and dates, then add each member's exact Jira assignee, group, office location, and daily hours. Add each office location and each unique group/location calendar. Country codes are a reference only. Public holiday dates must be entered on **Time Off**; mark an office or group calendar **Yes** only after checking that all relevant dates are listed.
+2. On **Time Off**, enter office-wide holidays with `All` in **Group or All**, or enter the exact group for a group-specific holiday. Add PTO with the member's name, date, and hours. Duplicate holiday dates count once, PTO is capped at the person's daily hours, and weekends or holidays do not also deduct PTO.
+3. To import Jira CSV data, open the export in Excel (use **Data > From Text/CSV** if you need to choose comma, semicolon, or tab), map its rows to **Issue Key**, **Summary**, **Assignee**, **Sprint**, and **Estimate (hours)**, then paste the data rows into columns A:E below the headers on **Jira Tasks**. Keep one assignee per issue and use numeric estimates in hours. The checks in columns F:G flag data that needs attention.
+4. On **Capacity**, review the Sprint, Team setup, Holiday / PTO, and Jira data checks. Share the results only when they all show **Ready**. **Daily Capacity** shows the date-by-date calculation behind each member's total.
+
+To export results as CSV, first finish the Ready checks, select **Capacity**, then use **File > Save As > CSV UTF-8** and choose a new filename. Excel exports only the active sheet to CSV; keep the original `.xlsx` to retain the setup, audit details, and formulas. The web app above separately supports setup CSV/JSON import and export.
+
 ## Calculation rules
 
 - Saturday and Sunday are excluded. National holidays, extra location holidays, and extra group days off apply to the relevant members.
